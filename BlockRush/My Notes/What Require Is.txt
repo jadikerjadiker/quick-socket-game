@@ -1,0 +1,3 @@
+require() is not part of your standard JavaScript. In context to your question and tags, require() is built into Node.js to load modules. The concept is similar to C/Java/Python/[insert more languages here] imports or includes.
+
+The concept of modules is similar to just adding small bits of JavaScript code via a <script> tags. Unlike adding a <script> tag, it doesn't leak the file into the global scope. The file has its own scope, essentially trapping everything you define in that file, unless you decide to expose functionality. require returns a value, depending on what the module exposes using exports or module.exports. Another post explains how require() works in conjunction with exports.

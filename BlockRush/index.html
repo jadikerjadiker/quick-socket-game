@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+    <head>
+        
+    </head>
+    <body>
+        <input type="text" id="enterName"><button onclick="submitName()" id="submitName">Submit Username</button>
+        <canvas id="mainCanvas" width=90% height=50% style="border:1px solid #000000;">
+            Sorry, your browser does not support the HTML5 canvas. Please try to update it so you can play!
+        </canvas>
+    </body>
+    
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      var version = 12;
+      var canvas = document.getElementById('mainCanvas');
+      var gameMap; //the client's version of the game
+      var ctx = canvas.getContext('2d');
+      var socket = io();
+      var myPlayer;
+      var myName;
+      var id;
+      var screen = "getName";
+      
+      window.onerror = function(message, url, lineNumber) {  
+        var myMessage = "socket: "+ String(id)+"error: "+message+" Line number: "+String(lineNumber);
+        socket.emit('log', myMessage);
+        throw myMessage;
+      };  
+      
+      function defaultVal(arg, val) { return typeof arg !== 'undefined' ? arg : val; }
+      
+      function isObject(thing) {
+        return thing !== null && typeof thing === 'object';
+      }
+      
+      function getRandomColor() {
+          var letters = '0123456789ABCDEF'.split('');
+          var color = '#';
+          for (var i = 0; i < 6; i++ ) {
+              color += letters[Math.floor(Math.random() * 16)];
+          }
+          return color;
+      }
+      
+      function makeObject(data) {
+        if (data.type == "Player") {
+          var ans = new Player(data);
+          //console.log("Player made: ");
+          //console.log(ans);
+          return ans;
+        } else {
+          //console.log("Unknown object type: "+data.type);
+        }
+      }
+      
+      function resizeCanvas() {
+        var canvasWidthPct = .9;
+        var canvasHeightPct = .9;
+        
+        canvas.width = canvasWidthPct*window.innerWidth;
+        canvas.height = canvasHeightPct*window.innerHeight;
+        ctx.scale(1, -1); //flip the y axis so that up is positive y-axis (just what I'm used to)
+        //socket.emit('log', 'resizeCanvas finished')
+      }
+      
+      document.onkeydown = document.onkeyup = checkKey;
+      var keyMap = [];
+      function checkKey(e) {
+        e = e || window.event;
+        keyMap[e.keyCode] = e.type == 'keydown';
+        
+        /*
+        element.innerHTML = '';
+        var i, l = keyMap.length;
+        for(i = 0; i < l; i ++){
+            if(keyMap[i]){
+                element.innerHTML += '<hr>' + i;
+            }
+        }
+        */
+      }
+      
+      function Player(stuff) {
+        //console.log("Trying to make a new player. Here's the info I got to make it:");
+        //console.log(stuff);
+        var x, y, r, xvel, yvel, accel, color, name;
+        if (isObject(stuff)) {
+          x = stuff.x;
+          y = stuff.y;
+          r = stuff.r;
+          xvel = stuff.xvel;
+          yvel = stuff.yvel;
+          accel = stuff.accel;
+          color = stuff.color;
+          name = stuff.name;
+        }
+        
+        x = defaultVal(x, Math.random()*50);
+        y = defaultVal(y, Math.random()*50);
+        r = defaultVal(r, 50);
+        xvel = defaultVal(xvel, 0);
+        yvel = defaultVal(yvel, 0);
+        accel = defaultVal(accel, .01);
+        color = defaultVal(color, getRandomColor());
+        name = defaultVal(name, "Unnamed");
+
+        this.type = "Player";
+        this.x = x;
+        this.y = y;
+        this.r = r;
+        this.xvel = xvel;
+        this.yvel = yvel;
+        this.accel = accel;
+        this.color = color;
+        this.name = name;
+        
+        this.draw = function (context, x, y) { //x and y are where you would like this thing to draw (it is assumed you've already looked at its position to determine this)
+          console.log("Player being drawn") //dp
+          console.log(this.x, this.y, this.xvel, this.yvel)
+          if (x<(-this.r) || x>context.canvas.width+this.r || y>(this.r) || y>context.canvas.height+this.r) {
+            socket.emit('log', "Did not draw because I am off screen: "+id); //dp
+            return;
+          }
+          context.beginPath();
+          context.arc(x, y, this.r, 0, 2*Math.PI);
+          //console.log(this.color);
+          context.fillStyle = this.color;
+          context.fill();
+          //context.lineWidth = 5;
+          //context.strokeStyle = someColor;
+          context.stroke();
+          context.scale(1, -1);
+          context.fillText(this.name, x-context.measureText(this.name).width/2, -(y-this.r-20));
+          context.scale(1, -1);
+          return 1; //just checking to make sure it drew.
+        };
+      }
+      
+      /* I shouldn't need to update my own player; it's an object, so its changing properties should be reflected
+      function updateOwnPlayer() {
+        gameMap[id]["drawable"][0] = myPlayer;
+      }
+      */
+      //todo fix this, it is too early and could cause errors
+      function submitName() {
+        var nameLength = 30;
+        myName = document.getElementById('enterName').value.substring(0, nameLength);
+        console.log("Name set as: ");
+        console.log(myName);
+        socket.emit('setName', myName);
+      }
+      
+      socket.on('checkVersion', function() {
+          socket.emit('verifyVersion', version);
+      });
+      
+      socket.on('reloadPage', function(){
+        location.reload(true);
+      });
+      
+      socket.on('init', function(serverMap) {
+        gameMap = serverMap;
+        id = socket.io.engine.id;
+        console.log("Here's my ID");
+        console.log(id);
+        setUpAllSocketFunctions();
+      });
+      
+      socket.on('nameSuccess', function() {
+        myPlayer = new Player({'accel':5, 'name':myName});
+        console.log("Here's my new player");
+        console.log(myPlayer);
+        socket.emit('newPlayer', myPlayer);
+        gameMap[id] = {"drawable" : [myPlayer]};
+        screen = "play";
+      });
+      
+      function setUpAllSocketFunctions() {
+        //change it so it just passes the player in order to be faster
+        socket.on('newPlayer', function(socketID, socketMapInfo){
+          gameMap[socketID] = socketMapInfo;
+        });
+        
+        socket.on('updatePlayer', function(socketID, player){
+          //socket.emit('log', "player updated on socket: "+id);
+          gameMap[socketID]["drawable"][0] = player;
+        });
+        
+        //todo no fail code for newPlayer - if the player movement fails for some reason, the socket will not be in sync.
+        
+        //todo put in code to make sure the updates are valid with an updateNumber
+        socket.on('giveUpdates', function() {
+          var friction = gameMap['friction']
+          print("Friction is")
+          console.log(friction)
+          if (myPlayer) {
+            if (keyMap[37]) {
+              myPlayer.xvel-=myPlayer.accel;
+            }
+            if (keyMap[38]) {
+              myPlayer.yvel+=myPlayer.accel;
+            }
+            if (keyMap[39]) {
+              myPlayer.xvel+=myPlayer.accel;
+            }
+            if (keyMap[40]) {
+              myPlayer.yvel-=myPlayer.accel;
+            }
+            
+            
+            function applyFriction(value, frictionAmt){
+              if (value>0) {
+                value = Math.max(0, value-frictionAmt);
+              } else if (value<0) {
+                value = Math.min(0, value+frictionAmt);
+              }
+              console.log("Friction giving back")
+              console.log(value)
+              return value;
+            }
+            
+            console.log(myPlayer.xvel)
+            
+            myPlayer.xvel = applyFriction(myPlayer.xvel, friction);
+            myPlayer.yvel = applyFriction(myPlayer.yvel, friction);
+            
+            console.log(myPlayer.xvel)
+            
+            myPlayer.x+=myPlayer.xvel;
+            myPlayer.y+=myPlayer.yvel;
+            
+            console.log(myPlayer.x)
+            //if I'm moving //todo delete
+            /*
+            if (deltaX!=0 || deltaY!=0) {
+              updateOwnPlayer(myPlayer);
+            }*/
+            socket.emit('updatePlayer', myPlayer);
+          }
+        });
+        
+        
+        socket.on('deleteSocket', function(theID){
+          delete gameMap[theID];
+        });
+      }
+      
+      function drawScreen() {
+        resizeCanvas();
+        //console.log("Here's my player within drawScreen");
+        //console.log(myPlayer);
+        if (screen=="getName") {
+          canvas.style.visibility="hidden";
+        } else if (screen=="play") {
+          canvas.style.visibility="visible";
+          var offsetAmts;
+          //todo this could be done better (shouldn't the player always exist?)
+          if (myPlayer) {
+            offsetAmts = [-myPlayer.x+canvas.width/2, -myPlayer.y-canvas.height/2]; //cache
+          } else {
+            offsetAmts = [0, 0];
+          }
+          
+          for (var key in gameMap){ //loop through each socket
+            //console.log("Key of socket that I'm drawing:")
+            //console.log(key)
+            var drawableStuff = gameMap[key]["drawable"];
+            if (drawableStuff) {
+              for (var i = 0; i < drawableStuff.length; i++) { //loop through each thing to draw in each socket
+                var objToDraw = makeObject(drawableStuff[i]);
+                objToDraw.draw(ctx, objToDraw.x+offsetAmts[0], objToDraw.y+offsetAmts[1]); //ignoring my position for now
+              }
+            }
+          }
+        }
+      }
+      
+      //couldn't get the timer to work great, so I did this. But this means that everyone slows down when the server slows down.
+      socket.on('constantDraw', function() {
+        //console.log("Actually drew");
+        resizeCanvas();
+        drawScreen();
+        socket.emit('constantDraw');
+      });
+    </script>
+    
+</html>

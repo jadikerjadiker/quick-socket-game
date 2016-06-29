@@ -1,0 +1,220 @@
+<!doctype html>
+<html>
+    <head>
+        
+    </head>
+    <body>
+        <canvas id="mainCanvas" width=90% height=50% style="border:1px solid #000000;">
+            Sorry, your browser does not support the HTML5 canvas. Please try to update it so you can play!
+        </canvas>
+        <div id="element"></div> <!-- todo delete -->
+    </body>
+    
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      //try {
+        var canvas = document.getElementById('mainCanvas');
+        var gameMap; //the client's version of the game
+        var ctx = canvas.getContext('2d');
+        var socket = io();
+        var myPlayer;
+        var readyForUpdating;
+        var id;
+        
+        function defaultVal(arg, val) { return typeof arg !== 'undefined' ? arg : val; }
+        
+        function isObject(thing) {
+          return thing !== null && typeof thing === 'object';
+        }
+        
+        function makeObject(data) {
+          if (data.type == "Player") {
+            var ans = new Player(data);
+            //console.log("Player made: ");
+            //console.log(ans);
+            return ans;
+          } else {
+            //console.log("Unknown object type: "+data.type);
+          }
+        }
+        
+        function resizeCanvas() {
+          var canvasWidthPct = .9;
+          var canvasHeightPct = .9;
+          
+          canvas.width = canvasWidthPct*window.innerWidth;
+          canvas.height = canvasHeightPct*window.innerHeight;
+          ctx.scale(1, -1); //flip the y axis so that up is positive y-axis (just what I'm used to)
+          //socket.emit('log', 'resizeCanvas finished')
+        }
+        
+        function Player(stuff) {
+          //console.log("Trying to make a new player. Here's the info I got to make it:");
+          //console.log(stuff);
+          var x, y, r;
+          if (isObject(stuff)) {
+            x = stuff.x;
+            y = stuff.y;
+            r = stuff.r;
+          }
+          //console.log("Here's x, y, and then r");
+          //console.log(x, y, r);
+          
+          x = defaultVal(x, Math.random()*30);
+          y = defaultVal(y, Math.random()*30);
+          r = defaultVal(r, 50);
+          //console.log(r + " should be 50");
+
+          this.type = "Player";
+          this.x = x;
+          this.y = y;
+          this.r = r;
+          
+          this.draw = function (context, x, y) { //x and y are where you would like this thing to draw (it is assumed you've already looked at its position to determine this)
+            if (x<(-this.r) || x>context.canvas.width+this.r || y>(this.r) || y>context.canvas.height+this.r) {
+              socket.emit('log', "Did not draw because I am off screen: "+socket.id); //dp
+              return;
+            }
+            context.beginPath();
+            context.arc(x, y, this.r, 0, 2*Math.PI);
+            context.stroke();
+            //socket.emit('log', "Did draw: "+socket.id) //dp
+            return 1; //just checking to make sure it drew.
+          };
+        }
+        
+        function updateOwnPlayer() {
+          gameMap[id][0] = myPlayer;
+        }
+        
+        socket.on('init', function(serverMap) {
+          gameMap = serverMap;
+          id = socket.io.engine.id;
+          console.log("Here's my ID");
+          console.log(id);
+          myPlayer = new Player();
+          console.log("Here's my new player");
+          console.log(myPlayer);
+          socket.emit('newPlayer', myPlayer);
+          gameMap[id] = {"drawable" : [myPlayer]};
+          readyForUpdating = true;
+        });
+        
+        //change it so it just passes the player in order to be faster
+        socket.on('newPlayer', function(socketID, socketMapInfo){
+          gameMap[socketID] = socketMapInfo;
+        });
+        
+        socket.on('updatePlayer', function(socketID, player){
+          //socket.emit('log', "player updated on socket: "+id);
+          gameMap[socketID]["drawable"][0] = player;
+        });
+        
+        //todo no fail code for newPlayer
+        
+        //todo put in code to make sure the updates are valid with an updateNumber
+        socket.on('giveUpdates', function() {
+          if (readyForUpdating) {
+            if (keyMap[38]) {
+              myPlayer.y+=1;
+            }
+            //else if (e.keyCode == '40') {//todo delete
+            if (keyMap[40]) {
+              myPlayer.y-=1;
+            }
+            if (keyMap[37]) {
+              myPlayer.x-=1;
+            }
+            if (keyMap[39]) {
+              myPlayer.x+=1;
+            }
+      
+            updateOwnPlayer();
+            socket.emit('updatePlayer', myPlayer);
+          }
+        });
+        
+        socket.on('deleteSocket', function(theID){
+          delete gameMap[theID];
+        });
+
+//        document.onkeydown = checkKey; //todo actually delete
+         // Or you could call it "key"
+        
+          
+        document.onkeydown = document.onkeyup = checkKey;
+        var keyMap = [];
+        function checkKey(e) {
+          e = e || window.event;
+          keyMap[e.keyCode] = e.type == 'keydown';
+          
+          //dp
+          element.innerHTML = '';
+          var i, l = keyMap.length;
+          for(i = 0; i < l; i ++){
+              if(keyMap[i]){
+                  element.innerHTML += '<hr>' + i;
+              }
+          }
+        }
+        
+        function drawScreen() {
+          resizeCanvas();
+          //console.log("Here's my player within drawScreen");
+          //console.log(myPlayer);
+          
+          if (myPlayer) {
+          var offsetAmts = [myPlayer.x+canvas.width/2, myPlayer.y+canvas.height/2]; //cache
+          }
+          
+          for (var key in gameMap){ //loop through each socket
+            //console.log("Key of socket that I'm drawing:")
+            //console.log(key)
+            var drawableStuff = gameMap[key]["drawable"];
+            if (drawableStuff) {
+              for (var i = 0; i < drawableStuff.length; i++) { //loop through each thing to draw in each socket
+                var objToDraw = makeObject(drawableStuff[i]);
+                objToDraw.draw(ctx, objToDraw.x, objToDraw.y); //ignoring my position for now
+              }
+            }
+          }
+        }
+        
+        //couldn't get the timer to work great
+        socket.on('constantDraw', function() {
+          //console.log("Actually drew");
+          resizeCanvas();
+          drawScreen();
+          socket.emit('constantDraw')
+        });
+        
+        
+        /*
+        //timer from stack overflow
+        var interval = 1; // ms
+        var expectedTime = Date.now() + interval;
+        setTimeout(step, interval);
+        function step() {
+            var dt = Date.now() - expectedTime; // the drift (positive for overshooting)
+            if (dt > interval) {
+                // something really bad happened. Maybe the browser (tab) was inactive?
+                // possibly special handling to avoid futile "catch up" run
+            }
+            // do what is to be done
+            //console.log(dt);
+            resizeCanvas();
+            drawScreen();
+            
+            console.log(dt);
+            expectedTime += interval;
+            setTimeout(step, Math.max(0, interval - dt)); // take into account drift
+        }
+        */
+      //}
+      //catch (e){
+        //socket.emit('log', 'An error has occurred: '+e.message);
+      //}
+    </script>
+    
+</html>
