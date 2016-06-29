@@ -13,3 +13,14 @@ and be presented with a circle that can move around with the arrow keys.
 
 If there's only one person online, it won't look like you're moving (since there's no background).
 So,  I recommend creating a few tabs of people with different names and moving around so you can see how it works.
+
+
+As for commenting style, I use "todo" for things that may be broken or need to be done, and "upgrade" for things that may change, or may not.
+Sometimes you may see commented out console logs. I prefer to keep them there so I don't have to retype them if I need to debug.
+They also help comment and keep track of what's going on. If there's something confusing without a comment, check to make sure it doesn't have a console.log inside of it or...
+in this case, sometimes a socket.emit('log', someMessage) if I want the message to show up on the server side.
+(I can't inspect element on the Chromebook, so I try to forward stuff to the server if I don't have access to another computer.)
+
+I'm also just getting used to using Git, and may make a few mistakes or do things weird, so if I do, just let me know.
+
+"so'ed" is short for "Stack overflowed" which means I probably don't know how exactly the code works, but it does what I need it to.

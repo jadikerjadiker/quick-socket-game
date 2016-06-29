@@ -2,17 +2,21 @@ var app = require("express")();
 var http = require("http").Server(app);
 var io = require('socket.io')(http);
 
-var gameMap = {'friction':.5};
-var socketVersion = 19;
+/*
+gameMap is in the form {'friction':friction amount, socket id: {'drawable' : [list of things that every client should draw when drawing their screen], otherThings: other info}, another socket id...}
+*/
+var gameMap = {'friction':.5}; //the table that holds the entire state of the game
+var socketVersion = 19; //what version of the code is running. The server will tell the client to keep refreshing the page until the page's version matches it. 
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname+'/index.html');
-});
+}); //tell the client to load our page, index.html
 
-io.on('connection', function(socket) {
+io.on('connection', function(socket) { //when a new client connects
   console.log("Socket "+socket.id+" connected");
   socket.emit('checkVersion');
 
+  //reload the page if it doesn't have the correct version. Whenever a code update is made, the version number should be changed both here and on the index.html
   socket.on('verifyVersion', function(sv){
     console.log("Version check:");
     console.log("My version: ", socketVersion);
@@ -29,11 +33,11 @@ io.on('connection', function(socket) {
   
   //todo I think the name should be something separate from the player.
   socket.on('setName', function() {
-    socket.emit('nameSuccess');
+    socket.emit('nameSuccess'); //upgrade: check for duplicate usernames
   });
   
   socket.on('newPlayer', function(player){
-    function validateNewPlayer(player) {
+    function validateNewPlayer(player) { //upgrade: make sure its appropriate to make a new player
       return true;
     }
     
@@ -49,7 +53,7 @@ io.on('connection', function(socket) {
       console.log(gameMap[socket.id]['drawable']);
       socket.broadcast.emit('newPlayer', socket.id, gameMap[socket.id]);
     } else {
-      socket.emit('playerMadeFailed', gameMap, player);
+      socket.emit('playerMadeFailed', gameMap, player); //todo I don't think this has support on client side. I've learned that clients just ignore the emissions they don't understand, which is nice.
     }
   });
   

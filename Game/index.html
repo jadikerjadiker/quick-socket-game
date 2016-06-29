@@ -29,6 +29,7 @@
         throw myMessage;
       };  
       
+      //set a default value if one is not passed in
       function defaultVal(arg, val) { return typeof arg !== 'undefined' ? arg : val; }
       
       function isObject(thing) {
@@ -82,6 +83,7 @@
         */
       }
       
+      //upgrade: I feel like there's a better way to do this, where I don't have to mention every single property three times.
       function Player(stuff) {
         //console.log("Trying to make a new player. Here's the info I got to make it:");
         //console.log(stuff);
@@ -143,6 +145,7 @@
         gameMap[id]["drawable"][0] = myPlayer;
       }
       */
+      
       //todo fix this, it is too early and could cause errors
       function submitName() {
         var nameLength = 30;
@@ -156,8 +159,9 @@
           socket.emit('verifyVersion', version);
       });
       
+      
       socket.on('reloadPage', function(){
-        location.reload(true);
+        location.reload(true); //so'ed to automatically refresh page
       });
       
       socket.on('init', function(serverMap) {
