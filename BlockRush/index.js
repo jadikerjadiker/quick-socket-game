@@ -3,8 +3,8 @@ var app = require("express")();
 var http = require("http").Server(app);
 var io = require('socket.io')(http);
 
-var gameMap = {'friction':1};
-var socketVersion = 12;
+var gameMap = {'friction':.5};
+var socketVersion = 18;
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname+'/index.html');
@@ -108,9 +108,10 @@ function step() {
     if (dt > interval) {
         // something really bad happened. Maybe the browser (tab) was inactive?
         // possibly special handling to avoid futile "catch up" run
+        console.log("Woah! I had a huge lag of "+String(dt)+ "seconds.")
     }
-    // do what is to be done
-    //console.log(dt);
+    
+    //if (dt>1){ console.log(dt);} //see the delay in milliseconds
     io.emit('giveUpdates');
     
     expectedTime += interval;

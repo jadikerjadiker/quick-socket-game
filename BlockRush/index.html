@@ -13,7 +13,7 @@
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
-      var version = 12;
+      var version = 18;
       var canvas = document.getElementById('mainCanvas');
       var gameMap; //the client's version of the game
       var ctx = canvas.getContext('2d');
@@ -102,7 +102,7 @@
         r = defaultVal(r, 50);
         xvel = defaultVal(xvel, 0);
         yvel = defaultVal(yvel, 0);
-        accel = defaultVal(accel, .01);
+        accel = defaultVal(accel, 1);
         color = defaultVal(color, getRandomColor());
         name = defaultVal(name, "Unnamed");
 
@@ -117,10 +117,10 @@
         this.name = name;
         
         this.draw = function (context, x, y) { //x and y are where you would like this thing to draw (it is assumed you've already looked at its position to determine this)
-          console.log("Player being drawn") //dp
-          console.log(this.x, this.y, this.xvel, this.yvel)
+          //console.log("Player being drawn") //dp
+          //console.log(this.x, this.y, this.xvel, this.yvel)
           if (x<(-this.r) || x>context.canvas.width+this.r || y>(this.r) || y>context.canvas.height+this.r) {
-            socket.emit('log', "Did not draw because I am off screen: "+id); //dp
+            //socket.emit('log', "Did not draw because I am off screen: "+id);
             return;
           }
           context.beginPath();
@@ -169,7 +169,7 @@
       });
       
       socket.on('nameSuccess', function() {
-        myPlayer = new Player({'accel':5, 'name':myName});
+        myPlayer = new Player({'name':myName});
         console.log("Here's my new player");
         console.log(myPlayer);
         socket.emit('newPlayer', myPlayer);
@@ -192,9 +192,8 @@
         
         //todo put in code to make sure the updates are valid with an updateNumber
         socket.on('giveUpdates', function() {
-          var friction = gameMap['friction']
-          print("Friction is")
-          console.log(friction)
+          var friction = gameMap['friction'];
+          //console.log("Friction is "+String(friction));
           if (myPlayer) {
             if (keyMap[37]) {
               myPlayer.xvel-=myPlayer.accel;
@@ -216,22 +215,23 @@
               } else if (value<0) {
                 value = Math.min(0, value+frictionAmt);
               }
-              console.log("Friction giving back")
-              console.log(value)
+              if (value!=0) {
+                //console.log("Friction giving back "+String(value));
+              }
               return value;
             }
             
-            console.log(myPlayer.xvel)
+            //console.log(myPlayer.xvel)
             
             myPlayer.xvel = applyFriction(myPlayer.xvel, friction);
             myPlayer.yvel = applyFriction(myPlayer.yvel, friction);
             
-            console.log(myPlayer.xvel)
+            //console.log(myPlayer.xvel)
             
             myPlayer.x+=myPlayer.xvel;
             myPlayer.y+=myPlayer.yvel;
             
-            console.log(myPlayer.x)
+            //console.log(myPlayer.x)
             //if I'm moving //todo delete
             /*
             if (deltaX!=0 || deltaY!=0) {
