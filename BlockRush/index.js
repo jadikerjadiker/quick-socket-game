@@ -1,10 +1,9 @@
-//What in the world? This code is now causing the browser to try to print the page... What just happened?
 var app = require("express")();
 var http = require("http").Server(app);
 var io = require('socket.io')(http);
 
 var gameMap = {'friction':.5};
-var socketVersion = 18;
+var socketVersion = 19;
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname+'/index.html');
