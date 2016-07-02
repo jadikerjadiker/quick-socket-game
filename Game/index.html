@@ -1,10 +1,10 @@
 <!doctype html>
 <html>
     <head>
-        
+      <title>QuickSocket</title>
     </head>
     <body>
-        <input type="text" id="enterName"><button onclick="submitName()" id="submitName">Submit Username</button>
+        <input type="text" id="enterName"><button type="submit" onclick="submitName()" id="submitName">Submit Username</button>
         <canvas id="mainCanvas" width=90% height=50% style="border:1px solid #000000;">
             Sorry, your browser does not support the HTML5 canvas. Please try to update it so you can play!
         </canvas>
@@ -13,8 +13,8 @@
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
-      var version = 19;
-      var canvas = document.getElementById('mainCanvas');
+      var version = 23; //This version needs to match the one on the index or the page will just continue to refresh
+      var canvas = document.getElementById('mainCanvas'); //todo get canvas centered on page
       var gameMap; //the client's version of the game
       var ctx = canvas.getContext('2d');
       var socket = io();
@@ -87,13 +87,14 @@
       function Player(stuff) {
         //console.log("Trying to make a new player. Here's the info I got to make it:");
         //console.log(stuff);
-        var x, y, r, xvel, yvel, accel, color, name;
+        var x, y, r, xvel, yvel, maxvel, accel, color, name;
         if (isObject(stuff)) {
           x = stuff.x;
           y = stuff.y;
           r = stuff.r;
           xvel = stuff.xvel;
           yvel = stuff.yvel;
+          maxvel = stuff.maxvel;
           accel = stuff.accel;
           color = stuff.color;
           name = stuff.name;
@@ -104,6 +105,7 @@
         r = defaultVal(r, 50);
         xvel = defaultVal(xvel, 0);
         yvel = defaultVal(yvel, 0);
+        maxvel = defaultVal(maxvel, 10);
         accel = defaultVal(accel, 1);
         color = defaultVal(color, getRandomColor());
         name = defaultVal(name, "Unnamed");
@@ -114,6 +116,7 @@
         this.r = r;
         this.xvel = xvel;
         this.yvel = yvel;
+        this.maxvel = maxvel;
         this.accel = accel;
         this.color = color;
         this.name = name;
@@ -212,23 +215,22 @@
               myPlayer.yvel-=myPlayer.accel;
             }
             
-            
-            function applyFriction(value, frictionAmt){
+            function applyFrictionAndCap(value) {
               if (value>0) {
-                value = Math.max(0, value-frictionAmt);
+                value = Math.min(Math.max(0, value-friction), myPlayer.maxvel);
               } else if (value<0) {
-                value = Math.min(0, value+frictionAmt);
+                value = Math.max(Math.min(0, value+friction), -myPlayer.maxvel);
               }
               if (value!=0) {
                 //console.log("Friction giving back "+String(value));
               }
               return value;
+              
             }
-            
             //console.log(myPlayer.xvel)
             
-            myPlayer.xvel = applyFriction(myPlayer.xvel, friction);
-            myPlayer.yvel = applyFriction(myPlayer.yvel, friction);
+            myPlayer.xvel = applyFrictionAndCap(myPlayer.xvel);
+            myPlayer.yvel = applyFrictionAndCap(myPlayer.yvel);
             
             //console.log(myPlayer.xvel)
             
@@ -258,6 +260,7 @@
         if (screen=="getName") {
           canvas.style.visibility="hidden";
         } else if (screen=="play") {
+          //todo get rid of the username submission stuff
           canvas.style.visibility="visible";
           var offsetAmts;
           //todo this could be done better (shouldn't the player always exist?)

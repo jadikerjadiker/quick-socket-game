@@ -6,7 +6,7 @@ var io = require('socket.io')(http);
 gameMap is in the form {'friction':friction amount, socket id: {'drawable' : [list of things that every client should draw when drawing their screen], otherThings: other info}, another socket id...}
 */
 var gameMap = {'friction':.5}; //the table that holds the entire state of the game
-var socketVersion = 19; //what version of the code is running. The server will tell the client to keep refreshing the page until the page's version matches it. 
+var socketVersion = 23; //what version of the code is running. The server will tell the client to keep refreshing the page until the page's version matches it. 
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname+'/index.html');
